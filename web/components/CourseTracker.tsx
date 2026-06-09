@@ -1,19 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Spinner, StatusBadge } from "@/components/ui";
 
 type TrackedCourse = { classNumber: string; label: string; addedAt: string };
 type StatusResult = {
   status: "Open" | "Full" | "Waitlist" | "Unknown";
   seats: number | null;
   checkedAt: string;
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  Open: "bg-green-100 text-green-800",
-  Waitlist: "bg-amber-100 text-amber-800",
-  Full: "bg-red-100 text-red-800",
-  Unknown: "bg-slate-100 text-slate-600",
 };
 
 export default function CourseTracker() {
@@ -25,9 +19,9 @@ export default function CourseTracker() {
   const [label, setLabel] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
 
   async function load() {
-    setLoading(true);
     const [c, s] = await Promise.all([
       fetch("/api/courses").then((r) => r.json()),
       fetch("/api/status").then((r) => r.json()),
@@ -46,19 +40,24 @@ export default function CourseTracker() {
   async function addCourse(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    const res = await fetch("/api/courses", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ classNumber, label }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Failed to add course");
-      return;
+    setAdding(true);
+    try {
+      const res = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classNumber, label }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to add course");
+        return;
+      }
+      setCourses(data.courses);
+      setClassNumber("");
+      setLabel("");
+    } finally {
+      setAdding(false);
     }
-    setCourses(data.courses);
-    setClassNumber("");
-    setLabel("");
   }
 
   async function removeCourse(cn: string) {
@@ -67,76 +66,115 @@ export default function CourseTracker() {
     setCourses(data.courses);
   }
 
+  const counts = courses.reduce(
+    (acc, c) => {
+      const st = results[c.classNumber]?.status || "Unknown";
+      acc[st] = (acc[st] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
   return (
     <section>
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-xl font-semibold">Tracked courses — {term}</h2>
-        <span className="text-xs text-slate-500">
-          {lastRun ? `Last checked ${new Date(lastRun).toLocaleString()}` : "Not checked yet"}
-        </span>
+      {/* Summary stat chips */}
+      <div className="mb-5 grid grid-cols-4 gap-3">
+        {[
+          { label: "Tracked", value: courses.length, color: "text-slate-900" },
+          { label: "Open", value: counts.Open || 0, color: "text-green-600" },
+          { label: "Waitlist", value: counts.Waitlist || 0, color: "text-amber-600" },
+          { label: "Full", value: counts.Full || 0, color: "text-red-600" },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className="rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm"
+          >
+            <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
+            <div className="text-xs text-slate-500">{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      <form onSubmit={addCourse} className="mb-6 flex flex-wrap items-end gap-3">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">
+          Tracked courses <span className="font-normal text-slate-400">· {term}</span>
+        </h2>
+        <button
+          onClick={load}
+          className="text-xs text-slate-500 transition hover:text-sjsu-blue"
+          title="Reload statuses"
+        >
+          ↻ Refresh
+        </button>
+      </div>
+
+      {/* Add form */}
+      <form
+        onSubmit={addCourse}
+        className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      >
         <div>
-          <label className="block text-xs font-medium text-slate-600">
-            Class number (5-digit)
-          </label>
+          <label className="block text-xs font-medium text-slate-600">Class number</label>
           <input
             value={classNumber}
             onChange={(e) => setClassNumber(e.target.value)}
             placeholder="47158"
-            className="mt-1 w-32 rounded border border-slate-300 px-3 py-2 text-sm focus:border-sjsu-blue focus:outline-none"
+            className="mt-1 w-32 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sjsu-blue focus:outline-none focus:ring-2 focus:ring-sjsu-blue/20"
           />
         </div>
         <div className="flex-1">
-          <label className="block text-xs font-medium text-slate-600">
-            Label (optional)
-          </label>
+          <label className="block text-xs font-medium text-slate-600">Label (optional)</label>
           <input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder="CS 218 - Sec 01"
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-sjsu-blue focus:outline-none"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-sjsu-blue focus:outline-none focus:ring-2 focus:ring-sjsu-blue/20"
           />
         </div>
         <button
           type="submit"
-          className="rounded bg-sjsu-blue px-4 py-2 text-sm font-medium text-white hover:bg-blue-800"
+          disabled={adding || !classNumber.trim()}
+          className="inline-flex items-center gap-2 rounded-lg bg-sjsu-blue px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-800 disabled:opacity-50"
         >
-          Add
+          {adding && <Spinner />}
+          Add course
         </button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && (
+        <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+      )}
 
+      {/* List */}
       {loading ? (
-        <p className="text-sm text-slate-500">Loading…</p>
+        <div className="flex items-center gap-2 py-8 text-sm text-slate-400">
+          <Spinner /> Loading your courses…
+        </div>
       ) : courses.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          No courses tracked yet. Add a class number above.
-        </p>
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white/50 py-12 text-center">
+          <p className="text-sm text-slate-500">No courses tracked yet.</p>
+          <p className="mt-1 text-xs text-slate-400">Add a class number above to start.</p>
+        </div>
       ) : (
-        <ul className="divide-y divide-slate-200 rounded border border-slate-200 bg-white">
+        <ul className="space-y-2">
           {courses.map((c) => {
             const r = results[c.classNumber];
-            const status = r?.status || "Unknown";
             return (
-              <li key={c.classNumber} className="flex items-center justify-between px-4 py-3">
+              <li
+                key={c.classNumber}
+                className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition hover:border-sjsu-blue/40 hover:shadow"
+              >
                 <div>
-                  <p className="font-medium">{c.label}</p>
-                  <p className="text-xs text-slate-500">Class #{c.classNumber}</p>
+                  <p className="font-medium text-slate-800">{c.label}</p>
+                  <p className="text-xs text-slate-400">Class #{c.classNumber}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}
-                  >
-                    {status}
-                    {r?.seats != null ? ` · ${r.seats} seats` : ""}
-                  </span>
+                  <StatusBadge status={r?.status || "Unknown"} seats={r?.seats} />
                   <button
                     onClick={() => removeCourse(c.classNumber)}
-                    className="text-xs text-slate-400 hover:text-red-600"
-                    aria-label="Remove"
+                    className="text-slate-300 opacity-0 transition hover:text-red-600 group-hover:opacity-100"
+                    aria-label="Remove course"
+                    title="Remove"
                   >
                     ✕
                   </button>
@@ -148,9 +186,11 @@ export default function CourseTracker() {
       )}
 
       <p className="mt-4 text-xs text-slate-400">
-        Status is updated by the scraper (GitHub Action) every ~5 minutes and committed
-        to <code>status_log.json</code>. After adding/removing courses locally, commit &amp;
-        push <code>courses.json</code> so the cloud scraper picks up your changes.
+        {lastRun
+          ? `Statuses last checked ${new Date(lastRun).toLocaleString()} by the scraper.`
+          : "Not checked yet — run the scraper to populate statuses."}{" "}
+        New courses show “Unknown” until the next scraper run. Commit &amp; push{" "}
+        <code>courses.json</code> so the cloud scraper tracks them.
       </p>
     </section>
   );
