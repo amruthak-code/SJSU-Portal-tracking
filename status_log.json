@@ -1,4 +1,12 @@
 {
-  "lastRun": null,
-  "results": {}
+  "lastRun": "2026-06-09T01:11:49.082243+00:00",
+  "results": {
+    "47158": {
+      "status": "Unknown",
+      "seats": null,
+      "checkedAt": "2026-06-09T01:11:43.497956+00:00",
+      "label": "CS 218 - Sec 01 (example, replace me)",
+      "term": "Fall 2026"
+    }
+  }
 }
