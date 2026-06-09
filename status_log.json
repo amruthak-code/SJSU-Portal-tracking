@@ -1,45 +1,45 @@
 {
-  "lastRun": "2026-06-09T20:32:36.009199+00:00",
+  "lastRun": "2026-06-09T22:10:37.001887+00:00",
   "results": {
     "44604": {
       "status": "Waitlist",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009156+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001838+00:00",
       "label": "CS 249 Distributed comp",
       "term": "Fall 2026"
     },
     "42719": {
       "status": "Open",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009181+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001864+00:00",
       "label": "CS Biometrics",
       "term": "Fall 2026"
     },
     "49137": {
       "status": "Open",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009186+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001871+00:00",
       "label": "CS 272 Reinforcement learning",
       "term": "Fall 2026"
     },
     "43761": {
       "status": "Open",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009191+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001876+00:00",
       "label": "CS 280 Grad studies",
       "term": "Fall 2026"
     },
     "44757": {
       "status": "Waitlist",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009194+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001879+00:00",
       "label": "CS 271 Topics in ML",
       "term": "Fall 2026"
     },
     "46768": {
       "status": "Waitlist",
       "seats": null,
-      "checkedAt": "2026-06-09T20:32:36.009197+00:00",
+      "checkedAt": "2026-06-09T22:10:37.001883+00:00",
       "label": "CS 286 Adv topics in CS",
       "term": "Fall 2026"
     }
