@@ -2,7 +2,7 @@
 
 A full-stack tool to (1) get emailed the moment a seat opens in courses you're
 tracking, (2) find courses in plain English, and (3) audit your MS CS degree —
-powered by Claude.
+the AI tabs are powered by Google Gemini (free tier).
 
 It uses SJSU's **public** PeopleSoft class search (no login, no Duo MFA), so it
 won't lock your account.
@@ -16,7 +16,7 @@ won't lock your account.
                                                               │ reads/writes
                                                    ┌──────────▼────────────┐
                                                    │  Next.js app (local)   │
-                                                   │  3 tabs + Claude API   │
+                                                   │  3 tabs + Gemini API   │
                                                    └────────────────────────┘
 ```
 
@@ -27,7 +27,8 @@ Actions) for 24/7 email alerts; the web UI runs locally when you want it.
 
 ## Part 1 — Scraper (Python + Playwright)
 
-**Files:** `scraper/check_seats.py`, `scraper/requirements.txt`,
+**Files:** `scraper/check_seats.py` (seat tracker), `scraper/build_catalog.py`
+(live catalog for Smart Search), `scraper/requirements.txt`,
 `.github/workflows/track.yml`
 
 It reads `courses.json`, checks each class number on the public class search,
@@ -73,8 +74,16 @@ transitions into Open** — a course that stays open won't email you every run.
    - `GMAIL_USER` — your Gmail address
    - `GMAIL_APP_PASSWORD` — a [Google App Password](https://myaccount.google.com/apppasswords) (needs 2FA)
    - `ALERT_TO` *(optional)* — where alerts go (defaults to `GMAIL_USER`)
-3. The workflow runs every 5 min and commits `status_log.json` back to the repo.
-   Trigger a test run from the **Actions** tab → *Track SJSU course seats* → *Run workflow*.
+3. The workflow is scheduled (offset every ~15 min) and commits `status_log.json`
+   back to the repo. Trigger a test run any time from the **Actions** tab →
+   *Track SJSU course seats* → *Run workflow*.
+
+> **Scheduling caveat:** GitHub's `cron` is best-effort and can be delayed or
+> skipped (worse on private repos / high-frequency schedules). Keep the repo
+> **public** for more reliable scheduling, and don't edit the cron repeatedly —
+> each change resets GitHub's ~15–60 min re-registration timer. For guaranteed
+> timing, trigger the workflow from an external cron (e.g. cron-job.org calling
+> the `workflow_dispatch` API). Manual runs always work regardless.
 
 ---
 
@@ -86,9 +95,12 @@ Three tabs:
 
 1. **📋 Course Tracker** — add/remove class numbers (writes `courses.json`),
    shows the latest status from `status_log.json`.
-2. **🔍 Smart Search** — natural-language course finder; calls Claude with a
-   hardcoded sample of SJSU CS courses (`web/lib/sampleCourses.ts`).
-3. **🎓 Degree Audit** — paste completed courses; Claude matches them against the
+2. **🔍 Smart Search** — natural-language course finder grounded in the **real,
+   live SJSU CS schedule** (titles, times, instructors, Open/Full/Waitlist).
+   It reads `catalog.json`, built on demand by `scraper/build_catalog.py` (or the
+   "🔄 Refresh live courses" button in the tab). Falls back to a hardcoded sample
+   (`web/lib/sampleCourses.ts`) if `catalog.json` is missing.
+3. **🎓 Degree Audit** — paste completed courses; Gemini matches them against the
    hardcoded **MS CS** requirements (`web/lib/msCsRequirements.ts`).
 
 ### Run it
@@ -96,14 +108,18 @@ Three tabs:
 ```bash
 cd web
 npm install
-cp .env.local.example .env.local   # then paste your ANTHROPIC_API_KEY
+cp .env.local.example .env.local   # then paste your GEMINI_API_KEY
 npm run dev
 # open http://localhost:3000
 ```
 
-The Claude calls happen **server-side** in `web/app/api/{search,audit}/route.ts`,
-so `ANTHROPIC_API_KEY` never reaches the browser. The app uses the official
-`@anthropic-ai/sdk` with model `claude-opus-4-8` and structured (JSON-schema) outputs.
+The Gemini calls happen **server-side** in `web/app/api/{search,audit}/route.ts`,
+so `GEMINI_API_KEY` never reaches the browser. The app uses the official
+`@google/genai` SDK with model `gemini-2.5-flash-lite` (thinking disabled) and
+JSON output. The "🔄 Refresh live courses" button calls
+`web/app/api/refresh-catalog/route.ts`, which runs `scraper/build_catalog.py`
+locally to rebuild `catalog.json` (works only when run on your machine, since it
+needs Python + Playwright).
 
 ### How shared data works (hybrid)
 
@@ -122,7 +138,7 @@ pushes `status_log.json` back, so pull to see fresh statuses in the UI.
 | `GMAIL_USER`          | scraper   | Gmail address for sending alerts          |
 | `GMAIL_APP_PASSWORD`  | scraper   | Gmail App Password (not your login)       |
 | `ALERT_TO`            | scraper   | Alert recipient (optional)                |
-| `ANTHROPIC_API_KEY`   | web app   | Claude (Smart Search + Degree Audit)      |
+| `GEMINI_API_KEY`      | web app   | Gemini (Smart Search + Degree Audit)      |
 
 > The original spec listed `SJSU_USER` / `SJSU_PASS` for portal login. We use the
 > **public** class search instead, so those are **not needed** — no credentials,
@@ -134,7 +150,9 @@ pushes `status_log.json` back, so pull to see fresh statuses in the UI.
 
 - **Track different courses:** edit `courses.json` (or use the Tracker tab).
 - **Change the term:** set `term` in `courses.json` (e.g. `"Spring 2027"`).
-- **Add courses to Smart Search:** extend `web/lib/sampleCourses.ts`.
+- **Refresh Smart Search data:** click "🔄 Refresh live courses" in the tab, or
+  run `cd scraper && python build_catalog.py` (defaults to subject CS).
+- **Search a different subject:** `python build_catalog.py MATH` (rebuilds `catalog.json`).
 - **Fix degree requirements for your catalog year:** edit `web/lib/msCsRequirements.ts`.
 
 ## Notes & limitations

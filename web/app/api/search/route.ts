@@ -1,17 +1,22 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { SAMPLE_COURSES } from "@/lib/sampleCourses";
+import { readCatalog } from "@/lib/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Lite model, thinking disabled (thinkingBudget: 0).
+const MODEL = "gemini-2.5-flash-lite";
+
 // POST /api/search   body: { query: string }
-// Returns Claude recommendations grounded in SAMPLE_COURSES.
+// Grounds GPT/Gemini recommendations in the LIVE catalog (catalog.json) when
+// available, otherwise falls back to the hardcoded sample list.
 export async function POST(req: Request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY is not set on the server." },
+      { error: "GEMINI_API_KEY is not set on the server." },
       { status: 500 }
     );
   }
@@ -21,73 +26,74 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "query is required" }, { status: 400 });
   }
 
-  const client = new Anthropic({ apiKey });
+  // Prefer the live catalog (real sections + Open/Full/Waitlist).
+  const catalog = await readCatalog();
+  const usingLive = !!catalog;
+  const courseList = catalog
+    ? catalog.courses.map((c) => ({
+        code: c.code,
+        title: c.title,
+        section: c.section,
+        days: c.daysTime,
+        instructor: c.instructor,
+        status: c.status,
+        classNumber: c.classNumber,
+      }))
+    : SAMPLE_COURSES.map((c) => ({
+        code: c.code,
+        title: c.title,
+        section: "",
+        days: c.days,
+        instructor: c.instructor,
+        status: "Unknown",
+        classNumber: "",
+      }));
+
+  const ai = new GoogleGenAI({ apiKey });
 
   const system =
     "You are an SJSU academic advising assistant. Recommend courses ONLY from " +
-    "the provided course catalog (do not invent courses). Carefully respect any " +
-    "constraints in the student's request: day of week, time of day, course level, " +
-    "topic area, and avoiding time conflicts with named courses. For each " +
-    "recommendation explain briefly why it fits, and flag anything the student " +
-    "should double-check (e.g. prerequisites or possible conflicts).";
+    "the provided course list (do not invent courses). Each course has a live " +
+    "enrollment status: Open, Waitlist, or Full. Respect all constraints in the " +
+    "request: day of week, time of day, level, topic, and avoiding conflicts with " +
+    "named courses. If the user asks for 'open' or 'available' sections, ONLY " +
+    "recommend ones with status Open. Otherwise you may include Waitlist/Full but " +
+    "clearly note their status. For each pick, explain briefly why it fits and flag " +
+    "anything to double-check.\n\n" +
+    "Respond with ONLY a JSON object in exactly this shape (no markdown):\n" +
+    `{
+  "recommendations": [
+    { "code": "", "title": "", "days": "", "time": "", "instructor": "", "status": "", "reason": "", "cautions": "" }
+  ],
+  "summary": ""
+}`;
 
   const userContent =
     `Student request: "${query}"\n\n` +
-    `Available courses (JSON):\n${JSON.stringify(SAMPLE_COURSES, null, 2)}`;
+    (usingLive
+      ? `LIVE course list for ${catalog!.term} (generated ${catalog!.generatedAt}):\n`
+      : `Sample course list (live data unavailable — note this to the user):\n`) +
+    JSON.stringify(courseList, null, 2);
 
   try {
-    const response = await client.messages.create({
-      model: "claude-opus-4-8",
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: {
-        effort: "medium",
-        format: {
-          type: "json_schema",
-          schema: {
-            type: "object",
-            properties: {
-              recommendations: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    code: { type: "string" },
-                    title: { type: "string" },
-                    days: { type: "string" },
-                    time: { type: "string" },
-                    instructor: { type: "string" },
-                    reason: { type: "string" },
-                    cautions: { type: "string" },
-                  },
-                  required: [
-                    "code",
-                    "title",
-                    "days",
-                    "time",
-                    "instructor",
-                    "reason",
-                    "cautions",
-                  ],
-                  additionalProperties: false,
-                },
-              },
-              summary: { type: "string" },
-            },
-            required: ["recommendations", "summary"],
-            additionalProperties: false,
-          },
-        },
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: userContent,
+      config: {
+        systemInstruction: system,
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 },
       },
-      system,
-      messages: [{ role: "user", content: userContent }],
     });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    const parsed = textBlock && "text" in textBlock ? JSON.parse(textBlock.text) : {};
-    return NextResponse.json(parsed);
+    const text = response.text ?? "{}";
+    const parsed = JSON.parse(text);
+    return NextResponse.json({
+      ...parsed,
+      live: usingLive,
+      generatedAt: catalog?.generatedAt ?? null,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: `Claude request failed: ${message}` }, { status: 502 });
+    return NextResponse.json({ error: `Gemini request failed: ${message}` }, { status: 502 });
   }
 }

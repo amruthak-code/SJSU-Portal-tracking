@@ -1,0 +1,497 @@
+{
+  "term": "Fall 2026",
+  "subject": "CS",
+  "generatedAt": "2026-06-09T04:57:54.673297+00:00",
+  "courses": [
+    {
+      "classNumber": "47524",
+      "code": "CS 1290R",
+      "title": "Culminating Experience Supervision",
+      "section": "01-SUP",
+      "daysTime": "TBA",
+      "instructor": "Jeffrey Honda",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43640",
+      "code": "CS 200W",
+      "title": "Graduate Technical Writing",
+      "section": "01-LEC",
+      "daysTime": "TuTh 10:30AM - 11:45AM",
+      "instructor": "Deborah Choe",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43641",
+      "code": "CS 200W",
+      "title": "Graduate Technical Writing",
+      "section": "03-LEC",
+      "daysTime": "MoWe 10:30AM - 11:45AM",
+      "instructor": "Gregory Tomlinson",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44598",
+      "code": "CS 200W",
+      "title": "Graduate Technical Writing",
+      "section": "02-LEC",
+      "daysTime": "TuTh 1:30PM - 2:45PM",
+      "instructor": "Craig Jones",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "46335",
+      "code": "CS 200W",
+      "title": "Graduate Technical Writing",
+      "section": "04-LEC",
+      "daysTime": "MoWe 3:00PM - 4:15PM",
+      "instructor": "Gregory Tomlinson",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44603",
+      "code": "CS 218",
+      "title": "Topics in Cloud Computing",
+      "section": "01-LEC",
+      "daysTime": "MoWe 7:30PM - 8:45PM",
+      "instructor": "Sri Rajagopal",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "42719",
+      "code": "CS 223",
+      "title": "Advanced Bioinformatics",
+      "section": "01-SEM",
+      "daysTime": "TuTh 7:30AM - 8:45AM",
+      "instructor": "Leonard Wesley",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "46336",
+      "code": "CS 228",
+      "title": "Biometric Security with AI",
+      "section": "01-SEM",
+      "daysTime": "TuTh 10:30AM - 11:45AM",
+      "instructor": "Amith Kamath Belman",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44604",
+      "code": "CS 249",
+      "title": "Distributed Computing",
+      "section": "01-SEM",
+      "daysTime": "TuTh 6:00PM - 7:15PM",
+      "instructor": "Ramin Moazeni",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44109",
+      "code": "CS 255",
+      "title": "Design and Analysis of Algorithms",
+      "section": "01-SEM",
+      "daysTime": "MoWe 10:30AM - 11:45AM",
+      "instructor": "Chung-Wen Tsao",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "49132",
+      "code": "CS 256",
+      "title": "Topics in Artificial Intelligence",
+      "section": "01-SEM",
+      "daysTime": "MoWe 10:30AM - 11:45AM",
+      "instructor": "Teng Moh",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "46762",
+      "code": "CS 257",
+      "title": "Database System Principles",
+      "section": "02-SEM",
+      "daysTime": "TuTh 7:30PM - 8:45PM",
+      "instructor": "Ramin Moazeni",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43003",
+      "code": "CS 259",
+      "title": "Advanced Parallel Processing",
+      "section": "01-LEC",
+      "daysTime": "MoWe 4:30PM - 5:45PM",
+      "instructor": "Robert Chun",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "49135",
+      "code": "CS 262",
+      "title": "Randomized Algorithms and Applications",
+      "section": "01-SEM",
+      "daysTime": "MoWe 12:00PM - 1:15PM",
+      "instructor": "Abhishek Roy",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "42325",
+      "code": "CS 268",
+      "title": "Topics in Wireless Mobile Networking",
+      "section": "01-LEC",
+      "daysTime": "MoWe 9:00AM - 10:15AM",
+      "instructor": "Navrati Saxena",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44757",
+      "code": "CS 271",
+      "title": "Topics in Machine Learning",
+      "section": "02-LEC",
+      "daysTime": "TuTh 9:00AM - 10:15AM",
+      "instructor": "Jelena Gligorijevic",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "44922",
+      "code": "CS 271",
+      "title": "Topics in Machine Learning",
+      "section": "01-LEC",
+      "daysTime": "TuTh 12:00PM - 1:15PM",
+      "instructor": "Fabio Di Troia",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43005",
+      "code": "CS 272",
+      "title": "Reinforcement Learning and Sequential Decision Making",
+      "section": "01-LEC",
+      "daysTime": "MoWe 12:00PM - 1:15PM",
+      "instructor": "Genya Ishigaki",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "49137",
+      "code": "CS 272",
+      "title": "Reinforcement Learning and Sequential Decision Making",
+      "section": "02-LEC",
+      "daysTime": "MoWe 3:00PM - 4:15PM",
+      "instructor": "Mira Jane",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43756",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "01-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43757",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "02-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43758",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "03-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43759",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "04-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43760",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "05-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43761",
+      "code": "CS 280",
+      "title": "Graduate Individual Studies",
+      "section": "06-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "46768",
+      "code": "CS 286",
+      "title": "Advanced Topics in Computer Science",
+      "section": "01-SEM",
+      "daysTime": "TuTh 3:00PM - 4:15PM",
+      "instructor": "Faranak Abri",
+      "status": "Waitlist",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "49140",
+      "code": "CS 286",
+      "title": "Advanced Topics in Computer Science",
+      "section": "02-SEM",
+      "daysTime": "TuTh 12:00PM - 1:15PM",
+      "instructor": "Sayma Akther",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43922",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "03-SUP",
+      "daysTime": "TBA",
+      "instructor": "Melody Moh",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43923",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "04-SUP",
+      "daysTime": "TBA",
+      "instructor": "Mark Stamp",
+      "status": "Full",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43924",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "05-SUP",
+      "daysTime": "TBA",
+      "instructor": "Amith Kamath Belman",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43925",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "06-SUP",
+      "daysTime": "TBA",
+      "instructor": "Katerina Potika",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43926",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "07-SUP",
+      "daysTime": "TBA",
+      "instructor": "Nada Attar",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43927",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "08-SUP",
+      "daysTime": "TBA",
+      "instructor": "Navrati Saxena",
+      "status": "Full",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43928",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "09-SUP",
+      "daysTime": "TBA",
+      "instructor": "Fabio Di Troia",
+      "status": "Full",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43929",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "10-SUP",
+      "daysTime": "TBA",
+      "instructor": "Robert Chun",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43938",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "01-SUP",
+      "daysTime": "TBA",
+      "instructor": "Faranak Abri",
+      "status": "Full",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43940",
+      "code": "CS 297",
+      "title": "Preparation for Writing Project or Thesis",
+      "section": "02-SUP",
+      "daysTime": "TBA",
+      "instructor": "Maryam Khazaei",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43763",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "01-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43764",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "02-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43765",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "03-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43766",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "04-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43767",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "05-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43768",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "06-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43769",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "07-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43770",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "08-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43771",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "09-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43772",
+      "code": "CS 298",
+      "title": "Master's Writing Project",
+      "section": "10-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "43939",
+      "code": "CS 299",
+      "title": "Master's Thesis",
+      "section": "01-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    },
+    {
+      "classNumber": "47325",
+      "code": "CS 299",
+      "title": "Master's Thesis",
+      "section": "02-SUP",
+      "daysTime": "TBA",
+      "instructor": "To be Announced",
+      "status": "Open",
+      "career": "Graduate"
+    }
+  ]
+}

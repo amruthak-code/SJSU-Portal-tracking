@@ -10,6 +10,7 @@ const DATA_DIR = process.env.DATA_DIR
 
 const COURSES_FILE = path.join(DATA_DIR, "courses.json");
 const STATUS_FILE = path.join(DATA_DIR, "status_log.json");
+const CATALOG_FILE = path.join(DATA_DIR, "catalog.json");
 
 export type TrackedCourse = {
   classNumber: string;
@@ -55,5 +56,34 @@ export async function readStatus(): Promise<StatusData> {
     return JSON.parse(raw);
   } catch {
     return { lastRun: null, results: {} };
+  }
+}
+
+// Live course catalog (built on-demand by scraper/build_catalog.py).
+export type CatalogCourse = {
+  classNumber: string;
+  code: string;
+  title: string;
+  section: string;
+  daysTime: string;
+  instructor: string;
+  status: "Open" | "Full" | "Waitlist" | "Unknown";
+  career: string;
+};
+
+export type Catalog = {
+  term: string;
+  subject: string;
+  generatedAt: string;
+  courses: CatalogCourse[];
+};
+
+export async function readCatalog(): Promise<Catalog | null> {
+  try {
+    const raw = await fs.readFile(CATALOG_FILE, "utf-8");
+    const parsed = JSON.parse(raw);
+    return parsed.courses?.length ? parsed : null;
+  } catch {
+    return null;
   }
 }
