@@ -16,6 +16,12 @@ concurrency:
   group: track-seats
   cancel-in-progress: false
 
+# Run the JS-based helper actions (checkout, setup-python) on Node 24.
+# Silences the "Node.js 20 actions are deprecated" warning and future-proofs
+# the workflow ahead of GitHub's Sept 2026 removal of Node 20.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   check:
     runs-on: ubuntu-latest
