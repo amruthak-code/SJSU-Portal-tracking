@@ -1,0 +1,24 @@
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/out/
+node_modules/
+
+# Python
+scraper/__pycache__/
+scraper/.venv/
+*.pyc
+
+# Secrets — never commit real credentials
+.env
+.env.local
+web/.env.local
+
+# Scraper debug artifacts (screenshots/HTML dumps from calibration runs)
+scraper/debug/
+
+# OS
+.DS_Store
+
+# NOTE: courses.json and status_log.json are intentionally TRACKED.
+# They are the shared state between the local frontend and the GitHub Action.
