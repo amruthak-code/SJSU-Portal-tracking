@@ -4,10 +4,17 @@ SJSU course seat tracker — scraper.
 
 Reads ../courses.json, checks each tracked class number against SJSU's PUBLIC
 PeopleSoft class search (no login, no MFA), writes results to ../status_log.json,
-and emails a Gmail alert when any tracked class has open seats.
+and emails a Gmail alert when any tracked class has OPEN seats.
 
-Designed to run from GitHub Actions every 5 minutes, but also runs locally:
+How it works (calibrated against the live "View Schedule of Classes" page):
+  The public guest page searches by Subject + (Graduate/Undergraduate). It does
+  NOT have a class-number field. So for each subject we're tracking, we run a
+  search with "Show Open Classes Only" UNCHECKED, then read every section's
+  status icon (alt = "Open" / "Closed" / "Wait List") and match our class
+  numbers. The subject is taken from each course's `subject` field, or parsed
+  from the start of its `label` (e.g. "CS 249 ..." -> "CS").
 
+Run locally:
     cd scraper
     pip install -r requirements.txt
     playwright install chromium
@@ -16,16 +23,6 @@ Designed to run from GitHub Actions every 5 minutes, but also runs locally:
 Environment variables (see ../.env.example):
     GMAIL_USER, GMAIL_APP_PASSWORD   -- Gmail SMTP for alerts
     ALERT_TO                         -- recipient (defaults to GMAIL_USER)
-
-────────────────────────────────────────────────────────────────────────────
-IMPORTANT — SELECTOR CALIBRATION
-PeopleSoft's public class search is a JavaScript/postback app whose element IDs
-vary slightly between campuses and term layouts. The selectors in SELECTORS
-below are a best-effort starting point. On the FIRST run, if a course comes back
-as status "Unknown", the script dumps a screenshot + page HTML to scraper/debug/
-so you can open it, find the real element IDs, and update SELECTORS once.
-Everything else (alerting, logging, scheduling) works as-is.
-────────────────────────────────────────────────────────────────────────────
 """
 
 import json
@@ -46,32 +43,37 @@ COURSES_FILE = ROOT / "courses.json"
 STATUS_FILE = ROOT / "status_log.json"
 DEBUG_DIR = Path(__file__).resolve().parent / "debug"
 
-# ── SJSU public class search ─────────────────────────────────────────────────
-# COMMUNITY_ACCESS = guest/public class search (no login required).
+# ── SJSU public class search (COMMUNITY_ACCESS = guest, no login) ─────────────
 SEARCH_URL = (
     "https://cmsweb.cms.sjsu.edu/psp/CSJPRDF/EMPLOYEE/CSJPRD/c/"
     "COMMUNITY_ACCESS.CLASS_SEARCH.GBL?pslnkid=SJ_CLASS_SRCH_LNK"
 )
+CONTENT_FRAME = "#ptifrmtgtframe"  # the search form/results live in this iframe
 
-# PeopleSoft renders the search UI inside this iframe.
-CONTENT_FRAME = "#ptifrmtgtframe"
+# Careers to search per subject (covers both grad and undergrad sections).
+CAREERS = ["Graduate", "Undergraduate"]
 
-# Selectors are matched by *prefix* where PeopleSoft appends row indices.
-# Adjust these once after a calibration run if needed (see note at top of file).
-SELECTORS = {
-    # Term dropdown (e.g. "2026 Fall")
-    "term_select": "select[id^='CLASS_SRCH_WRK2_STRM']",
-    # "Class Nbr" search field (under Additional Search Criteria on some layouts)
-    "class_nbr_input": "input[id^='SSR_CLSRCH_WRK_CATALOG_NBR'], input[id^='CLASS_SRCH_WRK2_CLASS_NBR'], input[id*='CLASS_NBR']",
-    # Search button
-    "search_button": "a[id*='CLASS_SRCH_WRK2_SSR_PB_CLASS_SRCH'], input[id*='CLASS_SRCH_WRK2_SSR_PB_CLASS_SRCH']",
-    # Status cell/image in the results — PeopleSoft uses an icon with alt text
-    # "Open" / "Closed" / "Wait List".
-    "status_images": "img[alt='Open'], img[alt='Closed'], img[alt='Wait List'], img[alt='Waitlist']",
+# Map the page's status icon alt-text to our normalized status.
+ALT_TO_STATUS = {"Open": "Open", "Closed": "Full", "Wait List": "Waitlist"}
+
+# JS that maps every section's class number -> status icon alt text.
+PARSE_JS = """
+() => {
+  const m = {};
+  document.querySelectorAll("span[id^='MTG_CLASS_NBR$span$']").forEach(sp => {
+    const num = (sp.textContent || '').trim();
+    let row = sp;
+    for (let i = 0; i < 10 && row; i++) { if (row.tagName === 'TR') break; row = row.parentElement; }
+    let alt = '';
+    if (row) {
+      const im = row.querySelector("img[alt='Open'],img[alt='Closed'],img[alt='Wait List']");
+      if (im) alt = im.alt;
+    }
+    if (num) m[num] = alt;
+  });
+  return m;
 }
-
-# Map the term name in courses.json into the dropdown option text we try to pick.
-# We select by visible label substring, so "Fall 2026" -> matches "2026 Fall".
+"""
 
 
 def now_iso() -> str:
@@ -89,105 +91,80 @@ def save_status(status: dict):
     print(f"Wrote {STATUS_FILE}")
 
 
-def dump_debug(page, tag: str):
-    """Save a screenshot + HTML so selectors can be calibrated."""
+def subject_of(course: dict) -> str:
+    """Subject code for a tracked course: explicit field, or parsed from label."""
+    if course.get("subject"):
+        return str(course["subject"]).strip().upper()
+    m = re.match(r"\s*([A-Za-z]{2,4})", course.get("label", ""))
+    return m.group(1).upper() if m else ""
+
+
+def dump_debug(frame, tag: str):
     DEBUG_DIR.mkdir(exist_ok=True)
     try:
-        page.screenshot(path=str(DEBUG_DIR / f"{tag}.png"), full_page=True)
-        (DEBUG_DIR / f"{tag}.html").write_text(page.content(), encoding="utf-8")
-        print(f"  [debug] saved {DEBUG_DIR / tag}.png / .html for calibration")
+        (DEBUG_DIR / f"{tag}.html").write_text(frame.content(), encoding="utf-8")
+        print(f"  [debug] saved {DEBUG_DIR / tag}.html")
     except Exception as e:  # pragma: no cover
-        print(f"  [debug] could not save debug artifacts: {e}")
+        print(f"  [debug] could not save debug html: {e}")
 
 
-def term_label_variants(term: str):
-    """'Fall 2026' -> ['Fall 2026', '2026 Fall']."""
-    parts = term.split()
-    variants = [term]
-    if len(parts) == 2:
-        variants.append(f"{parts[1]} {parts[0]}")
-    return variants
+def get_content_frame(page):
+    """Return the underlying Frame object for the PeopleSoft content iframe.
+
+    Match by the iframe's name ('ptifrmtgtframe'), NOT by URL — the top-level
+    page URL also contains 'COMMUNITY_ACCESS', so a URL match would wrongly
+    return the outer shell (which has no results DOM)."""
+    for f in page.frames:
+        if (f.name or "") == "ptifrmtgtframe":
+            return f
+    return page.main_frame
 
 
-def get_frame(page):
-    """Return the PeopleSoft content frame, or the page itself as fallback."""
-    page.wait_for_selector(CONTENT_FRAME, timeout=30000)
-    frame = page.frame_locator(CONTENT_FRAME)
-    return frame
+def search_subject(page, term: str, subject: str, career: str) -> dict:
+    """Run one Subject+Career search and return {classNumber: status_alt}."""
+    page.goto(SEARCH_URL, wait_until="networkidle", timeout=60000)
+    page.wait_for_timeout(2000)
+    fr = page.frame_locator(CONTENT_FRAME)
 
+    # Term (option labels are exactly "Fall 2026" / "Spring 2026" / ...)
+    fr.locator("select[id^='CLASS_SRCH_WRK2_STRM']").first.select_option(label=term)
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(1500)
 
-def check_course(page, term: str, class_number: str) -> dict:
-    """
-    Search a single class number and return:
-        {"status": "Open"|"Full"|"Waitlist"|"Unknown", "seats": int|None}
-    """
-    result = {"status": "Unknown", "seats": None, "checkedAt": now_iso()}
+    # Subject + Career
+    fr.locator("#SSR_CLSRCH_WRK_SUBJECT\\$0").fill(subject)
+    fr.locator("select[id^='SSR_CLSRCH_WRK_ACAD_CAREER']").select_option(label=career)
+
+    # Uncheck "Show Open Classes Only" so full/waitlisted sections also appear.
+    cb = fr.locator("#SSR_CLSRCH_WRK_SSR_OPEN_ONLY\\$3")
     try:
-        page.goto(SEARCH_URL, wait_until="networkidle", timeout=60000)
-        frame = get_frame(page)
+        if cb.is_checked():
+            cb.uncheck()
+    except Exception:
+        pass
 
-        # 1) Select the term, trying visible-label variants.
-        try:
-            term_sel = frame.locator(SELECTORS["term_select"]).first
-            term_sel.wait_for(timeout=15000)
-            picked = False
-            for label in term_label_variants(term):
-                try:
-                    term_sel.select_option(label=re.compile(re.escape(label), re.I))
-                    picked = True
-                    break
-                except Exception:
-                    continue
-            if not picked:
-                # Fall back: pick the option whose text contains the year.
-                year = next((p for p in term.split() if p.isdigit()), "")
-                if year:
-                    term_sel.select_option(label=re.compile(year))
-            page.wait_for_timeout(1500)  # let PeopleSoft postback settle
-        except Exception:
-            pass  # some layouts remember the last term
+    fr.locator("#CLASS_SRCH_WRK2_SSR_PB_CLASS_SRCH").click()
+    page.wait_for_load_state("networkidle")
+    page.wait_for_timeout(3000)
 
-        # 2) Enter the class number.
-        nbr = frame.locator(SELECTORS["class_nbr_input"]).first
-        nbr.wait_for(timeout=15000)
-        nbr.fill(str(class_number))
+    # Best-effort: expand a paginated result set if a "View All" link exists.
+    try:
+        view_all = fr.get_by_text(re.compile("View All", re.I)).first
+        if view_all.is_visible(timeout=1500):
+            view_all.click()
+            page.wait_for_load_state("networkidle")
+            page.wait_for_timeout(2000)
+    except Exception:
+        pass
 
-        # 3) Click search.
-        frame.locator(SELECTORS["search_button"]).first.click()
-        page.wait_for_load_state("networkidle", timeout=60000)
-        page.wait_for_timeout(2000)
-
-        # 4) Read the status icon's alt text.
-        status_imgs = frame.locator(SELECTORS["status_images"])
-        count = status_imgs.count()
-        if count == 0:
-            dump_debug(page, f"unknown_{class_number}")
-            return result
-
-        alt = (status_imgs.first.get_attribute("alt") or "").strip().lower()
-        if alt == "open":
-            result["status"] = "Open"
-        elif alt in ("wait list", "waitlist"):
-            result["status"] = "Waitlist"
-        elif alt == "closed":
-            result["status"] = "Full"
-
-        # 5) Best-effort seat count: look for "Open Seats: N" or "N of M" text.
-        try:
-            body_text = frame.locator("body").inner_text(timeout=5000)
-            m = re.search(r"Open Seats[:\s]+(\d+)", body_text, re.I)
-            if m:
-                result["seats"] = int(m.group(1))
-        except Exception:
-            pass
-
-    except PWTimeout:
-        print(f"  [timeout] class {class_number}")
-        dump_debug(page, f"timeout_{class_number}")
+    try:
+        # Parse via the iframe locator (proven reliable) rather than a Frame
+        # object — PARSE_JS ignores the element arg and reads `document`.
+        return page.frame_locator(CONTENT_FRAME).locator("body").evaluate(PARSE_JS)
     except Exception as e:
-        print(f"  [error] class {class_number}: {e}")
-        dump_debug(page, f"error_{class_number}")
-    return result
+        print(f"  [warn] could not parse results for {subject}/{career}: {e}")
+        dump_debug(get_content_frame(page), f"parsefail_{subject}_{career}")
+        return {}
 
 
 def send_email_alert(open_courses: list):
@@ -197,11 +174,7 @@ def send_email_alert(open_courses: list):
     if not user or not pw:
         print("  [email] GMAIL_USER/GMAIL_APP_PASSWORD not set — skipping alert")
         return
-    lines = [
-        f"- {c['label']} (class {c['classNumber']}): {c['status']}"
-        + (f", {c['seats']} seat(s) open" if c.get("seats") is not None else "")
-        for c in open_courses
-    ]
+    lines = [f"- {c['label']} (class {c['classNumber']}): OPEN" for c in open_courses]
     body = (
         "Good news! Seats just opened in the courses you're tracking:\n\n"
         + "\n".join(lines)
@@ -209,7 +182,7 @@ def send_email_alert(open_courses: list):
         + "\n— SJSU Course Seat Tracker"
     )
     msg = EmailMessage()
-    msg["Subject"] = f"🎓 Seat available: {', '.join(c['classNumber'] for c in open_courses)}"
+    msg["Subject"] = "🎓 Seat available: " + ", ".join(c["classNumber"] for c in open_courses)
     msg["From"] = user
     msg["To"] = to
     msg.set_content(body)
@@ -231,34 +204,70 @@ def main():
         save_status({"lastRun": now_iso(), "results": {}})
         return
 
-    print(f"Checking {len(courses)} course(s) for {term}...")
-    results = {}
-    open_now = []
+    # Previous statuses, so we only alert on a transition INTO Open (no spam).
+    prev_status = {}
+    try:
+        with open(STATUS_FILE) as f:
+            prev_status = {
+                k: v.get("status") for k, v in json.load(f).get("results", {}).items()
+            }
+    except Exception:
+        pass
 
+    # Group by subject so we run as few searches as possible.
+    subjects = {}
+    for c in courses:
+        subj = subject_of(c)
+        if not subj:
+            print(f"  [skip] cannot determine subject for {c.get('label')!r}")
+            continue
+        subjects.setdefault(subj, []).append(c)
+
+    print(f"Checking {len(courses)} course(s) across {len(subjects)} subject(s) for {term}...")
+
+    # classNumber -> status_alt, built from one search per (subject, career)
+    found = {}
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
-        for c in courses:
-            cn = str(c["classNumber"])
-            label = c.get("label", cn)
-            print(f"- {label} (class {cn})")
-            r = check_course(page, term, cn)
-            r["label"] = label
-            r["term"] = term
-            results[cn] = r
-            print(f"    -> {r['status']}"
-                  + (f" ({r['seats']} seats)" if r.get("seats") is not None else ""))
-            if r["status"] in ("Open", "Waitlist") and r["status"] == "Open":
-                open_now.append({"classNumber": cn, **r})
+        for subj in subjects:
+            for career in CAREERS:
+                print(f"- searching {subj} ({career})")
+                try:
+                    found.update(search_subject(page, term, subj, career))
+                except PWTimeout:
+                    print(f"    [timeout] {subj}/{career}")
+                except Exception as e:
+                    print(f"    [error] {subj}/{career}: {e}")
         browser.close()
+
+    # Build results + collect open courses for alerting.
+    results = {}
+    open_now = []
+    for c in courses:
+        cn = str(c["classNumber"])
+        alt = found.get(cn, "")
+        status = ALT_TO_STATUS.get(alt, "Unknown")
+        results[cn] = {
+            "status": status,
+            "seats": None,  # guest page hides exact seat counts
+            "checkedAt": now_iso(),
+            "label": c.get("label", cn),
+            "term": term,
+        }
+        print(f"    {c.get('label', cn)} (class {cn}) -> {status}")
+        # Alert only on a transition into Open (was not Open last run), so a
+        # course that stays open doesn't email you every 5 minutes.
+        if status == "Open" and prev_status.get(cn) != "Open":
+            open_now.append({"classNumber": cn, "label": c.get("label", cn)})
 
     save_status({"lastRun": now_iso(), "results": results})
 
     if open_now:
-        print(f"{len(open_now)} course(s) have open seats — sending alert.")
+        print(f"{len(open_now)} course(s) newly OPEN — sending alert.")
         send_email_alert(open_now)
     else:
-        print("No open seats this run.")
+        print("No newly-open seats this run.")
 
 
 if __name__ == "__main__":

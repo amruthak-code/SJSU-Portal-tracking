@@ -47,14 +47,24 @@ export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
 python check_seats.py
 ```
 
-> **⚠ Selector calibration (one-time).** PeopleSoft's class search is a
-> JavaScript/postback app whose element IDs vary by campus/term. The selectors in
-> `SELECTORS` (top of `check_seats.py`) are a best-effort starting point — I
-> couldn't test them against live MySJSU from the build environment. If a course
-> comes back as **Unknown**, the script saves a screenshot + HTML to
-> `scraper/debug/`. Open those, find the real element IDs (term dropdown, "Class
-> Nbr" field, Search button, status icon), and update `SELECTORS` once. Everything
-> else (alerts, logging, scheduling, commit-back) works as-is.
+### How seat detection works (calibrated)
+
+The public guest page ("View Schedule of Classes") searches by **Subject +
+career**, not by class number. So for each subject you track, the scraper:
+
+1. selects the term, fills the subject (taken from each course's `subject`
+   field, or parsed from the start of its `label`, e.g. `"CS 249 ..."` → `CS`),
+   and **unchecks "Show Open Classes Only"** so full/waitlisted sections appear;
+2. reads every section's status icon (`Open` / `Closed` / `Wait List`) and matches
+   your class numbers to it.
+
+Statuses are normalized to **Open / Full / Waitlist** (the guest page hides exact
+seat counts, so `seats` is `null`). You get an email **only when a course
+transitions into Open** — a course that stays open won't email you every run.
+
+> Tip: make sure each tracked course's `label` starts with its subject code
+> (`CS …`, `MATH …`), or add an explicit `"subject": "CS"` field, so the scraper
+> knows which subject to search.
 
 ### Run it in the cloud (GitHub Actions)
 
