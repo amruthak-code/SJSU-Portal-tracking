@@ -2,9 +2,10 @@ name: Track SJSU course seats
 
 on:
   schedule:
-    # Every 5 minutes. NOTE: GitHub's scheduler is best-effort and under load
-    # may run every 5–15 min. That's fine for this use case.
-    - cron: "*/5 * * * *"
+    # Every 15 min at an OFFSET (not on the hour). GitHub heavily throttles/drops
+    # high-frequency ("*/5") and on-the-hour schedules on free accounts; a lower
+    # frequency offset off :00 fires far more reliably. Times are UTC.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch: {} # allow manual runs from the Actions tab
 
 # Allow the job to commit the updated status_log.json back to the repo.
