@@ -1,24 +1,24 @@
 {
-  "lastRun": "2026-06-09T02:22:26.407150+00:00",
+  "lastRun": "2026-06-09T02:38:47.547324+00:00",
   "results": {
     "44604": {
       "status": "Waitlist",
       "seats": null,
-      "checkedAt": "2026-06-09T02:22:26.407117+00:00",
+      "checkedAt": "2026-06-09T02:38:47.547289+00:00",
       "label": "CS 249 Distributed comp",
       "term": "Fall 2026"
     },
     "43005": {
       "status": "Waitlist",
       "seats": null,
-      "checkedAt": "2026-06-09T02:22:26.407139+00:00",
+      "checkedAt": "2026-06-09T02:38:47.547314+00:00",
       "label": "CS 273 Reinforcement",
       "term": "Fall 2026"
     },
     "42719": {
-      "status": "Full",
+      "status": "Open",
       "seats": null,
-      "checkedAt": "2026-06-09T02:22:26.407145+00:00",
+      "checkedAt": "2026-06-09T02:38:47.547320+00:00",
       "label": "CS Biometrics",
       "term": "Fall 2026"
     }
