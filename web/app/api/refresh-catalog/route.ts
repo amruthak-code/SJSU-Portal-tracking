@@ -2,18 +2,17 @@ import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import { existsSync } from "fs";
 import path from "path";
-import { readCatalog } from "@/lib/store";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 // POST /api/refresh-catalog?subject=CS
-// Runs scraper/build_catalog.py on demand to rebuild catalog.json with the
-// latest real sections + Open/Full/Waitlist status. Local-only (needs the
-// Python venv + Playwright that the scraper uses).
+// Runs scraper/build_catalog.py, which scrapes the live SJSU schedule and POSTs
+// it to /api/internal/catalog. Local-only (needs the Python venv + Playwright).
 export async function POST(req: Request) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams, origin } = new URL(req.url);
   const subject = (searchParams.get("subject") || "CS").toUpperCase();
 
   const repoRoot = path.resolve(process.cwd(), "..");
@@ -23,15 +22,19 @@ export async function POST(req: Request) {
   const script = path.join(scraperDir, "build_catalog.py");
 
   if (!existsSync(script)) {
-    return NextResponse.json(
-      { error: "build_catalog.py not found — is the scraper set up?" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "build_catalog.py not found." }, { status: 500 });
   }
 
   try {
     await new Promise<void>((resolve, reject) => {
-      const proc = spawn(python, [script, subject], { cwd: scraperDir });
+      const proc = spawn(python, [script, subject], {
+        cwd: scraperDir,
+        env: {
+          ...process.env,
+          APP_URL: origin,
+          CRON_SECRET: process.env.CRON_SECRET ?? "",
+        },
+      });
       let stderr = "";
       proc.stderr.on("data", (d) => (stderr += d.toString()));
       proc.on("error", reject);
@@ -40,17 +43,11 @@ export async function POST(req: Request) {
       );
     });
 
-    const catalog = await readCatalog();
-    return NextResponse.json({
-      ok: true,
-      count: catalog?.courses.length ?? 0,
-      generatedAt: catalog?.generatedAt ?? null,
-    });
+    const admin = createAdminClient();
+    const { count } = await admin.from("catalog").select("*", { count: "exact", head: true });
+    return NextResponse.json({ ok: true, count: count ?? 0 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: `Catalog refresh failed: ${message}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: `Catalog refresh failed: ${message}` }, { status: 500 });
   }
 }

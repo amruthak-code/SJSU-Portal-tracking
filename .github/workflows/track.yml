@@ -2,24 +2,15 @@ name: Track SJSU course seats
 
 on:
   schedule:
-    # Every 15 min at an OFFSET (not on the hour). GitHub heavily throttles/drops
-    # high-frequency ("*/5") and on-the-hour schedules on free accounts; a lower
-    # frequency offset off :00 fires far more reliably. Times are UTC.
+    # Offset every ~15 min (GitHub cron is best-effort). cron-job.org can also
+    # trigger this via the workflow_dispatch API for reliable timing.
     - cron: "7,22,37,52 * * * *"
-  workflow_dispatch: {} # allow manual runs from the Actions tab
+  workflow_dispatch: {}
 
-# Allow the job to commit the updated status_log.json back to the repo.
-permissions:
-  contents: write
-
-# Don't pile up overlapping runs.
 concurrency:
   group: track-seats
   cancel-in-progress: false
 
-# Run the JS-based helper actions (checkout, setup-python) on Node 24.
-# Silences the "Node.js 20 actions are deprecated" warning and future-proofs
-# the workflow ahead of GitHub's Sept 2026 removal of Node 20.
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -27,11 +18,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
@@ -40,23 +29,13 @@ jobs:
           pip install -r scraper/requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Run seat checker
+      - name: Check seats + refresh catalog
         env:
+          APP_URL: ${{ secrets.APP_URL }}           # deployed Vercel URL
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
-          ALERT_TO: ${{ secrets.ALERT_TO }}
         run: |
           cd scraper
           python check_seats.py
-
-      - name: Commit updated status log
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add status_log.json
-          if git diff --staged --quiet; then
-            echo "No status changes to commit."
-          else
-            git commit -m "chore: update seat status [skip ci]"
-            git push
-          fi
+          python build_catalog.py CS

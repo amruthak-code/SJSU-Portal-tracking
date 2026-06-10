@@ -1,32 +1,26 @@
 #!/usr/bin/env python3
 """
-Build a live course catalog for the Smart Search tab.
+Build the live course catalog for Smart Search and POST it to the web app's
+internal API, which stores it in Supabase.
 
 Scrapes the SJSU PUBLIC class search for a subject (default CS), capturing every
-section's code, title, days/time, instructor, and live Open/Full/Waitlist status,
-and writes it to ../catalog.json.
+section's code, title, days/time, instructor, and live Open/Full/Waitlist status.
 
-This is ON-DEMAND (run it when you want fresh data) — the web app's Smart Search
-reads catalog.json and hands it to Gemini, so recommendations reflect the real,
-current schedule including which sections are actually open.
+Env vars:
+    APP_URL       base URL of the web app (e.g. http://localhost:3000 or the Vercel URL)
+    CRON_SECRET   shared secret sent as the x-cron-secret header
+    TERM          optional, defaults to "Fall 2026"
 
 Usage:
-    cd scraper
-    source .venv/bin/activate
-    python build_catalog.py            # defaults to subject CS, term from courses.json
-    python build_catalog.py CS         # explicit subject
+    cd scraper && source .venv/bin/activate
+    APP_URL=http://localhost:3000 CRON_SECRET=... python build_catalog.py CS
 """
 
 import json
+import os
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
-
+import urllib.request
 from playwright.sync_api import sync_playwright
-
-ROOT = Path(__file__).resolve().parent.parent
-COURSES_FILE = ROOT / "courses.json"
-CATALOG_FILE = ROOT / "catalog.json"
 
 SEARCH_URL = (
     "https://cmsweb.cms.sjsu.edu/psp/CSJPRDF/EMPLOYEE/CSJPRD/c/"
@@ -36,8 +30,6 @@ FRAME = "#ptifrmtgtframe"
 CAREERS = ["Graduate", "Undergraduate"]
 ALT_TO_STATUS = {"Open": "Open", "Closed": "Full", "Wait List": "Waitlist"}
 
-# Extract every section. The course-title group boxes and the section rows are
-# SIBLINGS, so walk them in document order, tracking the current course title.
 PARSE_JS = """
 () => {
   const out = [];
@@ -73,11 +65,30 @@ PARSE_JS = """
 """
 
 
+def select_term(page, fr, term):
+    """Wait until the term dropdown's options have populated, then select.
+    PeopleSoft loads the options after the frame renders, so polling is more
+    reliable than a single select_option call."""
+    sel = fr.locator("select[id^='CLASS_SRCH_WRK2_STRM']").first
+    sel.wait_for(state="attached", timeout=30000)
+    opts = []
+    for _ in range(30):
+        try:
+            opts = sel.evaluate("el => Array.from(el.options).map(o => o.text.trim())")
+        except Exception:
+            opts = []
+        if term in opts:
+            sel.select_option(label=term)
+            return
+        page.wait_for_timeout(1000)
+    raise RuntimeError(f"term '{term}' not in options after waiting: {opts}")
+
+
 def scrape(page, term, subject, career):
     page.goto(SEARCH_URL, wait_until="networkidle", timeout=60000)
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(2500)
     fr = page.frame_locator(FRAME)
-    fr.locator("select[id^='CLASS_SRCH_WRK2_STRM']").first.select_option(label=term)
+    select_term(page, fr, term)
     page.wait_for_load_state("networkidle")
     page.wait_for_timeout(1500)
     fr.locator("#SSR_CLSRCH_WRK_SUBJECT\\$0").fill(subject)
@@ -98,13 +109,24 @@ def scrape(page, term, subject, career):
         return []
 
 
+def post_catalog(term, courses):
+    app_url = os.environ.get("APP_URL", "http://localhost:3000").rstrip("/")
+    secret = os.environ.get("CRON_SECRET", "")
+    payload = json.dumps({"term": term, "courses": courses}).encode()
+    req = urllib.request.Request(
+        f"{app_url}/api/internal/catalog",
+        data=payload,
+        headers={"Content-Type": "application/json", "x-cron-secret": secret},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        body = resp.read().decode()
+    print(f"  POST /api/internal/catalog -> {body}")
+
+
 def main():
     subject = (sys.argv[1] if len(sys.argv) > 1 else "CS").upper()
-    term = "Fall 2026"
-    try:
-        term = json.loads(COURSES_FILE.read_text()).get("term", term)
-    except Exception:
-        pass
+    term = os.environ.get("TERM", "Fall 2026")
 
     print(f"Building catalog for {subject} — {term} ...")
     by_class = {}
@@ -119,19 +141,13 @@ def main():
                     continue
                 s["status"] = ALT_TO_STATUS.get(s.pop("statusAlt", ""), "Unknown")
                 s["career"] = career
-                by_class[cn] = s  # dedupe by class number
+                by_class[cn] = s
         browser.close()
 
     courses = sorted(by_class.values(), key=lambda c: (c["code"], c["classNumber"]))
-    catalog = {
-        "term": term,
-        "subject": subject,
-        "generatedAt": datetime.now(timezone.utc).isoformat(),
-        "courses": courses,
-    }
-    CATALOG_FILE.write_text(json.dumps(catalog, indent=2))
     open_n = sum(1 for c in courses if c["status"] == "Open")
-    print(f"Wrote {CATALOG_FILE} — {len(courses)} sections ({open_n} open).")
+    print(f"Scraped {len(courses)} sections ({open_n} open). Posting to app...")
+    post_catalog(term, courses)
 
 
 if __name__ == "__main__":
