@@ -2,9 +2,9 @@ name: Track SJSU course seats
 
 on:
   schedule:
-    # Offset every ~15 min (GitHub cron is best-effort). cron-job.org can also
-    # trigger this via the workflow_dispatch API for reliable timing.
-    - cron: "7,22,37,52 * * * *"
+    # Every 20 min, offset off the hour (GitHub cron is best-effort). cron-job.org
+    # can also trigger this via the workflow_dispatch API for reliable timing.
+    - cron: "8,28,48 * * * *"
   workflow_dispatch: {}
 
 concurrency:
